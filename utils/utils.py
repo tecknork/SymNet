@@ -14,7 +14,7 @@ from . import aux_data
 def create_session():
     """create tensorflow session"""
     tfconfig = tf.ConfigProto(allow_soft_placement=True)
-    tfconfig.gpu_options.allow_growth = True
+    tfconfig.gpu_options.allow_growth = False
     return tf.Session(config=tfconfig)
 
 
