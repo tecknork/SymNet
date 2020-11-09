@@ -15,7 +15,7 @@ except (ValueError, ImportError):
 
 class CompositionDatasetActivations(torch.utils.data.Dataset):
 
-    def __init__(self, name, root, phase, feat_file, split='compositional-split', with_image=False, obj_pred=None, transform_type='normal'):
+    def __init__(self, root, phase, feat_file, split='compositional-split', with_image=False, obj_pred=None, transform_type='normal'):
         self.root = root
         self.phase = phase
         self.split = split
@@ -191,7 +191,7 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
 
 class CompositionDatasetActivationsGenerator(CompositionDatasetActivations):
 
-    def __init__(self,name, root, feat_file, split='compositional-split', feat_extractor=None, transform_type='normal'):
+    def __init__(self, root, feat_file, split='compositional-split', feat_extractor=None, transform_type='normal'):
         super(CompositionDatasetActivationsGenerator, self).__init__(root, 'train', None, split, transform_type=transform_type)
 
         assert os.path.exists(root)

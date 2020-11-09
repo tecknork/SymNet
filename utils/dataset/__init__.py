@@ -10,7 +10,7 @@ def get_dataloader(dataset_name, phase, feature_file="features.t7", batchsize=1,
     if dataset_name[-1]=='g':
         dataset_name = dataset_name[:-1]
         dataset =  GCZSL_dataset.CompositionDatasetActivations(
-            name = dataset_name,
+            #name = dataset_name,
             root = cfg.GCZSL_DS_ROOT[dataset_name], 
             phase = phase,
             feat_file = feature_file,
