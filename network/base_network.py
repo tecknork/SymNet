@@ -165,7 +165,7 @@ class BaseNetwork(object):
 
 
     
-    def test_step(self, sess, blobs, score_op):
+    def test_step(self, sess, blobs, score_op,no_postprocess=False):
         dset = self.dataloader.dataset
         test_att = np.array([dset.attr2idx[attr] for attr, _ in dset.pairs])
         test_obj = np.array([dset.obj2idx[obj] for _, obj in dset.pairs])
@@ -180,10 +180,11 @@ class BaseNetwork(object):
 
         score = sess.run(score_op, feed_dict=feed_dict)
 
-        for key in score_op.keys():
-            score[key][0] = {
-                (a,o): torch.from_numpy(score[key][0][:,i])
-                for i,(a,o) in enumerate(zip(test_att, test_obj))
-            }
+        if no_postprocess == False:
+            for key in score_op.keys():
+                score[key][0] = {
+                    (a,o): torch.from_numpy(score[key][0][:,i])
+                    for i,(a,o) in enumerate(zip(test_att, test_obj))
+                }
 
         return score

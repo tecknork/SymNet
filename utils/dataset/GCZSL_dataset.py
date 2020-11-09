@@ -191,7 +191,7 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
 
 class CompositionDatasetActivationsGenerator(CompositionDatasetActivations):
 
-    def __init__(self, root, feat_file, split='compositional-split', feat_extractor=None, transform_type='normal'):
+    def __init__(self,name, root, feat_file, split='compositional-split', feat_extractor=None, transform_type='normal'):
         super(CompositionDatasetActivationsGenerator, self).__init__(root, 'train', None, split, transform_type=transform_type)
 
         assert os.path.exists(root)
@@ -240,8 +240,8 @@ class CompositionDatasetActivationsGenerator(CompositionDatasetActivations):
 
         image_feats = []
         image_files = []
-        for chunk in tqdm.tqdm(data_utils.chunks(data, 512), total=len(data)//512):
-            files = zip(*chunk)[0]
+        for chunk in tqdm.tqdm(data_utils.chunks(data, 32), total=len(data)//32):
+            files = list(zip(*chunk))[0]
             imgs = list(map(self.loader, files))
             imgs = list(map(transform, imgs))
             feats = feat_extractor(torch.stack(imgs, 0).cuda())

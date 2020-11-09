@@ -117,7 +117,7 @@ class SolverWrapper(BaseSolver):
         predictions = np.concatenate(predictions, axis=0)
 
         print("Saving %s tensor to %s"%(str(predictions.shape),self.filename))
-        with open(self.filepath, 'w') as fp:
+        with open(self.filepath, 'wb') as fp:
             pickle.dump(predictions.tolist(), fp)
 
 

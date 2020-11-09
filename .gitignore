@@ -4,7 +4,7 @@ data/mit*
 data/ut*
 data/obj_scores
 data/tmp
-
+.idea/
 *.pyc
 *__pycache__
 

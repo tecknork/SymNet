@@ -1,5 +1,6 @@
+from . import GCZSL_dataset, CZSL_dataset
 from .. import config as cfg
-import CZSL_dataset, GCZSL_dataset
+#import CZSL_dataset, GCZSL_dataset
 from torch.utils.data import DataLoader
 import numpy as np
 
