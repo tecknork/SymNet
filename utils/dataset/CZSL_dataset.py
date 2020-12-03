@@ -102,10 +102,21 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
                 continue
 
             data_i = [image, attr, obj, self.attr2idx[attr], self.obj2idx[obj], self.activation_dict[image]]
-            if (attr, obj) in train_pair_set:
-                train_data.append(data_i)
-            else:
+            test_nouns = [
+                u'armor', u'bracelet', u'bush', u'camera', u'candy', u'castle',
+                u'ceramic', u'cheese', u'clock', u'clothes', u'coffee', u'fan', u'fig',
+                u'fish', u'foam', u'forest', u'fruit', u'furniture', u'garden', u'gate',
+                u'glass', u'horse', u'island', u'laptop', u'lead', u'lightning',
+                u'mirror', u'orange', u'paint', u'persimmon', u'plastic', u'plate',
+                u'potato', u'road', u'rubber', u'sand', u'shell', u'sky', u'smoke',
+                u'steel', u'stream', u'table', u'tea', u'tomato', u'vacuum', u'wax',
+                u'wheel', u'window', u'wool'
+            ]
+
+            if obj in test_nouns:
                 test_data.append(data_i)
+            else:
+                train_data.append(data_i)
 
         return train_data, test_data
 
