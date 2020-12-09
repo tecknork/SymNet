@@ -411,6 +411,30 @@ class Network(BaseNetwork):
 
         return summary
 
-    
-    
+    def test_step(self, sess, blobs, score_op, no_postprocess=False):
+        dset = self.dataloader.dataset
+        test_att = np.array([dset.attr2idx[attr] for attr, _ in dset.pairs])
+        test_obj = np.array([dset.obj2idx[obj] for _, obj in dset.pairs])
+
+        feed_dict = {
+            self.pos_image_feat: blobs[4],
+            self.pos_attr_id: blobs[1],
+            self.neg_attr_id: blobs[6],
+            self.test_attr_id: test_att,
+            self.test_obj_id: test_obj,
+        }
+        if self.args.obj_pred is not None:
+            feed_dict[self.pos_obj_prediction] = blobs[-1]
+
+        score = sess.run(score_op, feed_dict=feed_dict)
+
+        if no_postprocess == False:
+            for key in score_op.keys():
+                if key != 'nearest_neighbour':
+                    score[key][0] = {
+                        (a, o): torch.from_numpy(score[key][0][:, i])
+                        for i, (a, o) in enumerate(zip(test_att, test_obj))
+                    }
+
+        return score
     
