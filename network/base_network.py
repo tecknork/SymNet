@@ -172,6 +172,8 @@ class BaseNetwork(object):
 
         feed_dict = {
             self.pos_image_feat: blobs[4],
+            self.pos_attr_id: blobs[1],
+            self.neg_attr_id: blobs[6],
             self.test_attr_id: test_att,
             self.test_obj_id:  test_obj,
         }
@@ -182,6 +184,7 @@ class BaseNetwork(object):
 
         if no_postprocess == False:
             for key in score_op.keys():
+              if key != 'nearest_neighbour':
                 score[key][0] = {
                     (a,o): torch.from_numpy(score[key][0][:,i])
                     for i,(a,o) in enumerate(zip(test_att, test_obj))

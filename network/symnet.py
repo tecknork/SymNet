@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+import tensorflow.contrib.slim as slim
 import numpy as np
 import os, logging, torch, json
 import os.path as osp
@@ -24,7 +24,10 @@ class Network(BaseNetwork):
         self.dset = self.dataloader.dataset
         self.attr_embedder = utils.Embedder(args.wordvec, self.dset.attrs, args.data)
         self.emb_dim = self.attr_embedder.emb_dim      # dim of wordvec (attr or obj)
-
+        #test_image_embeddings
+        self.image_embeddings = tf.stack([data[5] for data in self.dset.test_data])
+        self.img_embeddings_e = self.rep_embedder(self.image_embeddings, False, "embedder_ret_n")
+        self.test_bz = args.test_bz
         self.pos_attr_id    = tf.placeholder(tf.int32, shape=[None])
         self.pos_obj_id     = tf.placeholder(tf.int32, shape=[None])
         self.pos_image_feat = tf.placeholder(tf.float32, shape=[None, self.feat_dim])
@@ -340,9 +343,24 @@ class Network(BaseNetwork):
         )
 
         score_res = dict([
-            ("score_rmd",   [prob_P_rmd, prob_A_attr, prob_O]),
+            ("score_rmd", [prob_P_rmd, prob_A_attr, prob_O])
         ])
 
+        ############################### image reterival #######################
+        # # image_features
+        pos_ground_img = self.rep_embedder(self.pos_image_feat, False, "embedder_ret")
+        # #remove groundattr
+        pos_rGA = self.transformer(pos_ground_img, pos_attr_emb, False, name='DeCoN')
+        #add query attribute
+        pos_aQA = self.transformer(pos_rGA, neg_attr_emb, False, name='CoN')
+
+        top_nn = self.get_top_N_NN(pos_ground_img,batchsize)
+        # retrieved_image = self.dset.data[top_nn]
+        #
+        score_res = dict([
+            ("score_rmd",   [prob_P_rmd, prob_A_attr, prob_O]),
+            ("nearest_neighbour", [top_nn])
+        ])
         ############################### summary ###############################
 
         loss = sum(total_losses)
@@ -357,8 +375,26 @@ class Network(BaseNetwork):
         
         return loss, score_res, train_summary_op
 
+    def get_top_N_NN(self,target_embedding,batchsize,k=65):
 
+        print(target_embedding.get_shape()) #(?,300)
 
+        print(self.img_embeddings_e.get_shape())#(65,300)
+        tile_image_emb = utils.tile_tensor(self.img_embeddings_e, 0, batchsize)
+        print(tile_image_emb.get_shape()) #(65*?,300)
+        repeat_img_feat = utils.repeat_tensor(target_embedding, 0, len(self.dset.test_data))
+        print(repeat_img_feat.get_shape())  # (65*?,300)
+
+        dis = tf.norm(repeat_img_feat - tile_image_emb, axis=-1)
+        #print(dis.get_shape())
+        # dis_per_image =  tf.map_fn(fn=lambda k: dis[...,k],
+        #                 elems=tf.range(batchsize),
+        #                 dtype=tf.float32)
+        dis_per_image = tf.split(dis,self.args.test_bz)
+        values, indices = tf.nn.top_k(dis_per_image, k=k, sorted=False)
+        print(indices[0])
+        #print(indices.get_shape())
+        return indices
 
     def train_step(self, sess, blobs, lr, train_op, train_summary_op):
         

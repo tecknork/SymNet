@@ -33,7 +33,9 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
         self.activation_dict = dict(zip(activation_data['files'], activation_data['features']))
         self.feat_dim = activation_data['features'].size(1)
         print ('%d activations loaded'%(len(self.activation_dict)))
-
+        # attrs - all attrs
+        # objs - all objs
+        # pairs - all pairs
         # pair = (attr, obj)
         self.attrs, self.objs, self.pairs, self.train_pairs, self.test_pairs = self.parse_split()
         self.attr2idx = {attr: idx for idx, attr in enumerate(self.attrs)}
@@ -41,9 +43,9 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
         self.pair2idx = {pair: idx for idx, pair in enumerate(self.pairs)}
 
 
-        self.train_data, self.test_data = self.get_split_info()
+        self.train_data, self.test_data,self.test_data_query = self.get_split_info()
         
-        self.data = self.train_data if self.phase=='train' else self.test_data   # list of [img_name, attr, obj, attr_id, obj_id, feat]
+        self.data = self.train_data if self.phase=='train' else self.test_data_query   # list of [img_name, attr, obj, attr_id, obj_id, feat]
         print ('#images = %d'%len(self.data))
         
         
@@ -118,7 +120,38 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
             else:
                 train_data.append(data_i)
 
-        return train_data, test_data
+                # negative image pool
+
+            # test_data_query = []
+            # for obj_neg_pool in self.neg_pool_test:
+            #     for obj_id
+
+        def noun2adjs_dataset(data):
+            noun2adjs = {}
+            for i, img in enumerate(data):
+                adj = img[1]
+                noun = img[2]
+                if noun not in noun2adjs.keys():
+                    noun2adjs[noun] = []
+                if adj not in noun2adjs[noun]:
+                    noun2adjs[noun].append(adj)
+            for noun, adjs in noun2adjs.items():
+                assert len(adjs) >= 2
+            return noun2adjs
+
+
+        test_data_query = []
+        noun2adjs_test_dataset = noun2adjs_dataset(test_data)
+        for idx,data in enumerate(test_data):
+               attr = data[1]
+               obj = data[2]
+               for target_adj in noun2adjs_test_dataset[obj]:
+                 if target_adj != attr:
+                        query = data + [self.attr2idx[target_adj],self.obj2idx[obj],target_adj,obj]
+                        test_data_query.append(query)
+
+        print(len(test_data_query))
+        return train_data, test_data,test_data_query
 
     def parse_split(self):
 
@@ -145,19 +178,28 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         def get_sample(i):
-            image, attr, obj, attr_id, obj_id, feat = self.data[i]
-            if self.with_image:
-                img = self.loader(image)
-                img = self.transform(img)
-            else:
-                img = None
+            if self.phase == 'train':
+                image, attr, obj, attr_id, obj_id, feat = self.data[i]
+                if self.with_image:
+                    img = self.loader(image)
+                    img = self.transform(img)
+                else:
+                    img = None
 
-            return [img, attr_id, obj_id, self.pair2idx[(attr, obj)], feat]
+                return [img, attr_id, obj_id, self.pair2idx[(attr, obj)], feat]
+            else:
+                image, attr, obj, attr_id, obj_id, feat,target_attr_id,target_obj_id,target_attr,target_obj = self.data[i]
+                if self.with_image:
+                    img = self.loader(image)
+                    img = self.transform(img)
+                else:
+                    img = None
+
+                return [img, attr_id, obj_id, self.pair2idx[(attr, obj)], feat,target_attr_id,target_obj_id,target_attr,target_obj]
 
         pos = get_sample(index)
 
         mask = np.array(self.obj_affordance_mask[pos[2]], dtype=np.float32)
-
 
         if self.phase=='train':
             negid = self.sample_negative(pos[1], pos[2]) # negative example
@@ -168,7 +210,7 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
             data = pos + [mask]
 
         # train [img, attr_id, obj_id, pair_id, img_feature, img, attr_id, obj_id, pair_id, img_feature, aff_mask]
-        # test [img, attr_id, obj_id, pair_id, img_feature, aff_mask]
+        # test [img, attr_id, obj_id, pair_id, img_feature,target_attr_id,target_obj_id,target_attr,target_obj, aff_mask]
 
         if self.obj_pred is not None:
             data.append(self.obj_pred[index,:])
@@ -177,7 +219,6 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.data)
-    
 
 
 

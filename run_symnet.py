@@ -295,11 +295,27 @@ class SolverWrapper(BaseSolver):
 
             if self.args.test_freq>0 and epoch % self.args.test_freq == 0:
                 ########################## test czsl ##########################
+                def print_for_label(top_nn):
+                    batch_top_nn = []
+                    for data in top_nn:
+                        top_nn = []
+                        for image in data:
+                            image_data = self.test_dataloader.dataset.test_data[image]
+                            top_nn.append((image_data[1], image_data[2]))
+                        batch_top_nn.append(top_nn)
+                    return batch_top_nn
 
+                def get_ground_label_for_image_ids(image_ids):
+                    lables_for_batch = []
+                    for image_id in image_ids:
+                        image_data = self.test_dataloader.dataset.test_data[image_id]
+                        lables_for_batch.append((image_data[3], image_data[4]))
+                    return lables_for_batch
                 accuracies_pair = defaultdict(list)
                 accuracies_attr = defaultdict(list)
                 accuracies_obj = defaultdict(list)
-
+                image_reterival_top_nn = []
+                image_reterival_image_labels_nn = []
                 for image_ind, batch in tqdm.tqdm(enumerate(self.test_dataloader), total=len(self.test_dataloader), postfix='test'):
 
                     predictions = self.network.test_step(sess, batch, score_op)
@@ -308,20 +324,32 @@ class SolverWrapper(BaseSolver):
                     obj_truth  = torch.from_numpy(batch[2])
 
                     for key in score_op.keys():
-                        p_pair, p_a, p_o = predictions[key]
-                        pair_results = evaluator.score_model(p_pair, obj_truth)
-                        match_stats = evaluator.evaluate_predictions(
-                            pair_results, attr_truth, obj_truth)
-                        accuracies_pair[key].append(match_stats)
-                        # 0/1 sequence of t/f
+                        if key != 'nearest_neighbour':
+                            p_pair, p_a, p_o = predictions[key]
+                            pair_results = evaluator.score_model(p_pair, obj_truth)
+                            match_stats = evaluator.evaluate_predictions(
+                                pair_results, attr_truth, obj_truth)
+                            accuracies_pair[key].append(match_stats)
+                            # 0/1 sequence of t/f
 
-                        a_match, o_match = evaluator.evaluate_only_attr_obj(
-                            p_a, attr_truth, p_o, obj_truth)
+                            a_match, o_match = evaluator.evaluate_only_attr_obj(
+                                p_a, attr_truth, p_o, obj_truth)
 
-                        accuracies_attr[key].append(a_match)
-                        accuracies_obj[key].append(o_match)
-
-                        
+                            accuracies_attr[key].append(a_match)
+                            accuracies_obj[key].append(o_match)
+                        else:
+                            top_nn = predictions[key]
+                            image_reterival_top_nn.extend([image_id for row in top_nn for image_id in row])
+                            image_reterival_image_labels_nn.extend([get_ground_label_for_image_ids(image_id) for row in top_nn for image_id in row])
+                        #
+                        # label_top_nn = print_for_label(top_nn[0])
+                        # #  print(top_nn[0])
+                        # # print(label_top_nn)
+                        # for i, data in enumerate(batch):
+                        #  #   print(data)
+                        #  top_nn_per_image = label_top_nn[i]
+                        #  for nn in top_nn_per_image:
+                        #      print("ground truth (%s,%s) \t target truth (%s,%s)" % (data[1], data[2],nn[0],nn[1]))
 
                 all_report = {'Current':{}, 'Best':{}}
 
@@ -334,6 +362,27 @@ class SolverWrapper(BaseSolver):
                     real_attr_acc = torch.mean(torch.cat(accuracies_attr[name])).item()
                     real_obj_acc = torch.mean(torch.cat(accuracies_obj[name])).item()
 
+                    ############ image_reterival_score ########################
+                    target_labels_for_each_query = [(data[6],data[7]) for data in self.test_dataloader.dataset.data]
+                    recall_k =  defaultdict(list)
+                    for k in [1, 5, 10, 50, 100]:
+                        r = 0.0
+                        r_a = 0.0
+                        r_o = 0.0
+                        for query_result_image_ids,query_result_image_labels,query_target_labels in zip(image_reterival_top_nn,image_reterival_image_labels_nn,target_labels_for_each_query):
+                            if query_target_labels in query_result_image_labels[:k]:
+                                r +=1
+                            if query_target_labels[0] in [x[0] for x in query_result_image_labels[:k]]:
+                                r_a +=1
+                            if query_target_labels[1] in [x[1] for x in query_result_image_labels[:k]]:
+                                r_o +=1
+                        r /= len(target_labels_for_each_query)
+                        r_a /= len(target_labels_for_each_query)
+                        r_o /= len(target_labels_for_each_query)
+                        recall_k[k].append([r,r_a,r_o])
+                        print("k:%d recall_compositon:%s recall_attribue:%s recall_object:%s" %(k,r,r_a,r_o))
+                    ###################### image reterival #################################################
+
                     report_dict = {
                         'real_attr_acc':real_attr_acc,
                         'real_obj_acc': real_obj_acc,
@@ -342,6 +391,7 @@ class SolverWrapper(BaseSolver):
                         'top3_acc':     closed_3_acc,
                         'name':         self.args.name,
                         'epoch':        epoch,
+                        'ir_recall': recall_k,
                     }
 
                     if self.criterion not in best_report[name] or report_dict[self.criterion] > best_report[name][self.criterion]:
@@ -356,8 +406,14 @@ class SolverWrapper(BaseSolver):
                     # save to tensorboard
                     summary = tf.Summary()
                     for key, value in report_dict.items():
-                        if key not in ['name', 'epoch']:
+                        if key not in ['name', 'epoch','ir_recall']:
                             summary.value.add(tag="%s/%s"%(name,key), simple_value=value)
+                        if key == 'ir_recall':
+                             for k in value:
+                                summary.value.add(tag="%s/%s/%d/%s" % (name, key,k,'r'), simple_value=value[k][0][0])
+                                summary.value.add(tag="%s/%s/%d/%s" % (name, key, k, 'rA'), simple_value=value[k][0][1])
+                                summary.value.add(tag="%s/%s/%d/%s" % (name, key, k, 'rO'), simple_value=value[k][0][2])
+
                     writer.add_summary(summary, epoch)
 
 
