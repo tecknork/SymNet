@@ -87,7 +87,7 @@ class Network(BaseNetwork):
 
 
 
-    def test_step(self, sess, blobs, score_op):
+    def test_step(self, sess, blobs, score_op,no_postprocess=False):
         dset = self.dataloader.dataset
         test_att = np.array([dset.attr2idx[attr] for attr, _ in dset.pairs])
         test_obj = np.array([dset.obj2idx[obj] for _, obj in dset.pairs])
