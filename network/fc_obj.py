@@ -102,10 +102,11 @@ class Network(BaseNetwork):
 
         score = sess.run(score_op, feed_dict=feed_dict)
 
-        # for key in score_op.keys():
-        #     score[key][0] = {
-        #         (a, o): torch.from_numpy(score[key][0][:, i])
-        #         for i, (a, o) in enumerate(zip(test_att, test_obj))
-        #     }
+        if no_postprocess == False:
+            for key in score_op.keys():
+                score[key][0] = {
+                    (a, o): torch.from_numpy(score[key][0][:, i])
+                    for i, (a, o) in enumerate(zip(test_att, test_obj))
+                }
 
         return score
