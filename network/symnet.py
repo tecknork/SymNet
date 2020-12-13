@@ -311,6 +311,7 @@ class Network(BaseNetwork):
         
 
         ################################ testing ##############################
+
         pos_img = self.rep_embedder(self.pos_image_feat, False, "embedder")
         repeat_img_feat = utils.repeat_tensor(pos_img, 0, self.num_attr)  
         # (bz*#attr, dim_rep)
@@ -347,6 +348,7 @@ class Network(BaseNetwork):
         ])
 
         ############################### image reterival #######################
+        self.img_embeddings_e = self.rep_embedder(self.image_embeddings, False, "embedder_ret_n")
         # # image_features
         pos_ground_img = self.rep_embedder(self.pos_image_feat, False, "embedder_ret")
         # #remove groundattr
