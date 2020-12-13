@@ -421,7 +421,7 @@ class Network(BaseNetwork):
         feed_dict = {
             self.pos_image_feat: blobs[4],
             self.pos_attr_id: blobs[1],
-            self.neg_attr_id: blobs[6],
+            self.neg_attr_id: blobs[5],
             self.test_attr_id: test_att,
             self.test_obj_id: test_obj,
         }
