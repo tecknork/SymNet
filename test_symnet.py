@@ -106,7 +106,8 @@ class SolverWrapper(BaseSolver):
         accuracies_pair = defaultdict(list)
         accuracies_attr = defaultdict(list)
         accuracies_obj = defaultdict(list)
-
+        image_reterival_top_nn = []
+        image_reterival_image_labels_nn = []
         for image_ind, batch in tqdm.tqdm(enumerate(self.test_dataloader), total=len(self.test_dataloader), postfix='test'):
 
             predictions = self.network.test_step(sess, batch, score_op)  # ordereddict of [score_pair, score_a, score_o]
@@ -114,19 +115,52 @@ class SolverWrapper(BaseSolver):
             attr_truth, obj_truth = batch[1], batch[2]
             attr_truth, obj_truth = torch.from_numpy(attr_truth), torch.from_numpy(obj_truth)
 
+            def get_ground_label_for_image_ids(image_ids):
+                lables_for_batch = []
+                for image_id in image_ids:
+                    image_data = self.test_dataloader.dataset.test_data[image_id]
+                    lables_for_batch.append((image_data[3], image_data[4]))
+                return lables_for_batch
             match_stats = []
             for key in score_op.keys():
-                p_pair, p_a, p_o = predictions[key]
-                pair_results = evaluator.score_model(p_pair, obj_truth)
-                match_stats = evaluator.evaluate_predictions(pair_results, attr_truth, obj_truth)
-                accuracies_pair[key].append(match_stats)  # 0/1 sequence of t/f
+                if key != 'nearest_neighbour':
+                    p_pair, p_a, p_o = predictions[key]
+                    pair_results = evaluator.score_model(p_pair, obj_truth)
+                    match_stats = evaluator.evaluate_predictions(pair_results, attr_truth, obj_truth)
+                    accuracies_pair[key].append(match_stats)  # 0/1 sequence of t/f
 
-                a_match, o_match = evaluator.evaluate_only_attr_obj(p_a, attr_truth, p_o, obj_truth)
+                    a_match, o_match = evaluator.evaluate_only_attr_obj(p_a, attr_truth, p_o, obj_truth)
 
-                accuracies_attr[key].append(a_match)
-                accuracies_obj[key].append(o_match)
+                    accuracies_attr[key].append(a_match)
+                    accuracies_obj[key].append(o_match)
 
+                else:
+                    top_nn = predictions[key]
+                    image_reterival_top_nn.extend([image_id for row in top_nn for image_id in row])
+                    image_reterival_image_labels_nn.extend(
+                        [get_ground_label_for_image_ids(image_id) for row in top_nn for image_id in row])
 
+        ############ image_reterival_score ########################
+        target_labels_for_each_query = [(data[6], data[7]) for data in self.test_dataloader.dataset.data]
+        recall_k = defaultdict(list)
+        for k in [1, 5, 10, 50, 100]:
+                    r = 0.0
+                    r_a = 0.0
+                    r_o = 0.0
+                    for query_result_image_ids, query_result_image_labels, query_target_labels in zip(
+                            image_reterival_top_nn, image_reterival_image_labels_nn, target_labels_for_each_query):
+                        if query_target_labels in query_result_image_labels[:k]:
+                            r += 1
+                        if query_target_labels[0] in [x[0] for x in query_result_image_labels[:k]]:
+                            r_a += 1
+                        if query_target_labels[1] in [x[1] for x in query_result_image_labels[:k]]:
+                            r_o += 1
+                    r /= len(target_labels_for_each_query)
+                    r_a /= len(target_labels_for_each_query)
+                    r_o /= len(target_labels_for_each_query)
+                    recall_k[k].append([r, r_a, r_o])
+                    print("k:%d recall_compositon:%s recall_attribue:%s recall_object:%s" % (k, r, r_a, r_o))
+        ###################### image reterival #################################################
 
         for name in accuracies_pair.keys():
             accuracies = accuracies_pair[name]
@@ -145,6 +179,7 @@ class SolverWrapper(BaseSolver):
                 'top3_acc':     closed_3_acc,
                 'name':         self.args.name,
                 'epoch':        self.args.epoch,
+                'ir_recall':    recall_k,
             }
 
             print(name + ": " + utils.formated_czsl_result(report_dict))
