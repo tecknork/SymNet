@@ -356,7 +356,7 @@ class Network(BaseNetwork):
         #add query attribute
         pos_aQA = self.transformer(pos_rGA, neg_attr_emb, False, name='CoN')
 
-        top_nn = self.get_top_N_NN(pos_ground_img,batchsize)
+        top_nn = self.get_top_N_NN(pos_aQA,batchsize)
         # retrieved_image = self.dset.data[top_nn]
         #
         score_res = dict([
