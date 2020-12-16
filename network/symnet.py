@@ -377,7 +377,7 @@ class Network(BaseNetwork):
         
         return loss, score_res, train_summary_op
 
-    def get_top_N_NN(self,target_embedding,batchsize,k=65):
+    def get_top_N_NN(self,target_embedding,batchsize,k=100):
 
         print(target_embedding.get_shape()) #(?,300)
 
