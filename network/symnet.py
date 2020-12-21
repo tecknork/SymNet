@@ -387,7 +387,7 @@ class Network(BaseNetwork):
         repeat_img_feat = utils.repeat_tensor(target_embedding, 0, len(self.dset.test_data))
         print(repeat_img_feat.get_shape())  # (65*?,300)
 
-        dis = tf.norm(repeat_img_feat - tile_image_emb, axis=-1)
+        dis = tf.negative(tf.norm(repeat_img_feat - tile_image_emb, axis=-1))
         #print(dis.get_shape())
         # dis_per_image =  tf.map_fn(fn=lambda k: dis[...,k],
         #                 elems=tf.range(batchsize),
