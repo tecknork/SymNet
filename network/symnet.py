@@ -348,9 +348,9 @@ class Network(BaseNetwork):
         ])
 
         ############################### image reterival #######################
-        self.img_embeddings_e = self.rep_embedder(self.image_embeddings, False, "embedder_ret_n")
+        self.img_embeddings_e = self.rep_embedder(self.image_embeddings, False, "embedder")
         # # image_features
-        pos_ground_img = self.rep_embedder(self.pos_image_feat, False, "embedder_ret")
+        pos_ground_img = self.rep_embedder(self.pos_image_feat, False, "embedder")
         # #remove groundattr
         pos_rGA = self.transformer(pos_ground_img, pos_attr_emb, False, name='DeCoN')
         #add query attribute
