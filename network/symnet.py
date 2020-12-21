@@ -26,7 +26,7 @@ class Network(BaseNetwork):
         self.emb_dim = self.attr_embedder.emb_dim      # dim of wordvec (attr or obj)
         #test_image_embeddings
         self.image_embeddings = tf.stack([data[5] for data in self.dset.test_data])
-        self.img_embeddings_e = self.rep_embedder(self.image_embeddings, False, "embedder_ret_n")
+        self.img_embeddings_e = self.rep_embedder(self.image_embeddings, False, "embedder")
         self.test_bz = args.test_bz
         self.pos_attr_id    = tf.placeholder(tf.int32, shape=[None])
         self.pos_obj_id     = tf.placeholder(tf.int32, shape=[None])
