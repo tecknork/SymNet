@@ -117,7 +117,7 @@ class CompositionDatasetActivations(torch.utils.data.Dataset):
 
             if obj in test_nouns:
                 test_data.append(data_i)
-            else:
+            if (attr, obj) in train_pair_set:
                 train_data.append(data_i)
 
                 # negative image pool
