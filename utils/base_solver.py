@@ -97,15 +97,15 @@ class BaseSolver(object):
             optimizer = tf.train.GradientDescentOptimizer(lr)
         elif self.args.optimizer == 'momentum':
             optimizer = tf.train.MomentumOptimizer(lr, 0.9)
-            logger.info('Using momentum optimizer')
+            #logger.info('Using momentum optimizer')
         elif self.args.optimizer == 'adam':
             optimizer = tf.train.AdamOptimizer(lr)
-            logger.info('Using Adam optimizer')
+            #logger.info('Using Adam optimizer')
         elif self.args.optimizer == 'adamw':
             optimizer = tf.contrib.opt.AdamWOptimizer(5e-5, lr)
-            logger.info('Using AdamW optimizer')
+            #logger.info('Using AdamW optimizer')
         elif self.args.optimizer == 'rmsprop':
             optimizer = tf.train.RMSPropOptimizer(lr)
-            logger.info('Using RMSProp optimizer')
+            #logger.info('Using RMSProp optimizer')
         
         return optimizer
