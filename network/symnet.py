@@ -26,7 +26,7 @@ class Network(BaseNetwork):
         self.emb_dim = self.attr_embedder.emb_dim      # dim of wordvec (attr or obj)
         #test_image_embeddings
         self.image_embeddings = tf.stack([data[5] for data in self.dset.test_data])
-        self.img_embeddings_e = self.rep_embedder(self.image_embeddings, False, "embedder")
+        #self.img_embeddings_e = self.rep_embedder(self.image_embeddings, False, "embedder")
         self.test_bz = args.test_bz
         self.pos_attr_id    = tf.placeholder(tf.int32, shape=[None])
         self.pos_obj_id     = tf.placeholder(tf.int32, shape=[None])
@@ -348,7 +348,7 @@ class Network(BaseNetwork):
         ])
 
         ############################### image reterival #######################
-        self.img_embeddings_e = self.rep_embedder(self.image_embeddings, False, "embedder")
+        #self.img_embeddings_e =
         # # image_features
         pos_ground_img = self.rep_embedder(self.pos_image_feat, False, "embedder")
         # #remove groundattr
@@ -356,14 +356,16 @@ class Network(BaseNetwork):
         #add query attribute
         pos_aQA = self.transformer(pos_rGA, neg_attr_emb, False, name='CoN')
 
-        top_nn = self.get_top_N_NN(pos_aQA,batchsize)
+        #top_nn = self.get_top_N_NN(pos_aQA,batchsize)
         # retrieved_image = self.dset.data[top_nn]
         #
         score_res = dict([
             ("score_rmd",   [prob_P_rmd, prob_A_attr, prob_O]),
-            ("nearest_neighbour", [top_nn])
+            ("nearest_neighbour", pos_aQA)
         ])
         ############################### summary ###############################
+
+        image_embeddings = self.rep_embedder(self.image_embeddings, False, "embedder")
 
         loss = sum(total_losses)
         
@@ -375,7 +377,7 @@ class Network(BaseNetwork):
         train_summary_op = tf.summary.merge_all()
 
         
-        return loss, score_res, train_summary_op
+        return loss, score_res, train_summary_op,image_embeddings
 
     def get_top_N_NN(self,target_embedding,batchsize,k=100):
 
@@ -412,6 +414,12 @@ class Network(BaseNetwork):
             })
 
         return summary
+
+
+    def get_img_embeddings(self,sess,img_embeddings):
+
+        return sess.run(img_embeddings)
+
 
     def test_step(self, sess, blobs, score_op, no_postprocess=False):
         dset = self.dataloader.dataset
