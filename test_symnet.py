@@ -164,7 +164,7 @@ class SolverWrapper(BaseSolver):
         nn_result_labels = [get_ground_label_for_image_ids(data) for data in nn_result_labels]
         ############ image_reterival_score ########################
         target_labels_for_each_query = [(data[6], data[7]) for data in self.test_dataloader.dataset.data]
-        # recall_k = defaultdict(list)
+        recall_k = defaultdict(list)
         # for k in [1, 5, 10, 50, 100]:
         #             r = 0.0
         #             r_a = 0.0
@@ -190,24 +190,24 @@ class SolverWrapper(BaseSolver):
                 if target_query in nns[:k]:
                     r += 1
             r /= len(nn_result_labels)
-            out += [('recall_top' + str(k) + '_correct_composition', r)]
+            #out += [('recall_top' + str(k) + '_correct_composition', r)]
 
-            r = 0.0
+            r_a = 0.0
             for target_query, nns in zip(target_labels_for_each_query, nn_result_labels):
                 if target_query[0] in [x[0] for x in nns[:k]]:
-                    r += 1
-            r /= len(nn_result_labels)
-            out += [('recall_top' + str(k) + '_correct_adj', r)]
+                    r_a += 1
+            r_a /= len(nn_result_labels)
+           # out += [('recall_top' + str(k) + '_correct_adj', r)]
 
-
-            r = 0.0
+            r_o = 0.0
             for target_query, nns in zip(target_labels_for_each_query, nn_result_labels):
                 if target_query[1] in [x[1] for x in nns[:k]]:
-                    r += 1
-            r /= len(nn_result_labels)
-            out += [('recall_top' + str(k) + '_correct_noun', r)]
+                    r_o += 1
+            r_o /= len(nn_result_labels)
+            #out += [('recall_top' + str(k) + '_correct_noun', r)]
+            recall_k[k].append([r, r_a, r_o])
 
-        print(out)
+        #print(out)
 
 
         for name in accuracies_pair.keys():
@@ -227,7 +227,7 @@ class SolverWrapper(BaseSolver):
                 'top3_acc':     closed_3_acc,
                 'name':         self.args.name,
                 'epoch':        self.args.epoch,
-                #'ir_recall':    recall_k,
+                'ir_recall':    recall_k,
             }
 
             print(name + ": " + utils.formated_czsl_result(report_dict))

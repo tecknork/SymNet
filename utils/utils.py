@@ -49,30 +49,30 @@ def duplication_check(args):
 def formated_czsl_result(report):
     fstr = '[{name}/{epoch}] rA:{real_attr_acc:.4f}|rO:{real_obj_acc:.4f}|Cl/T1:{top1_acc:.4f}|T2:{top2_acc:.4f}|T3:{top3_acc:.4f}'
 
-    # if 'ir_recall' in report:
-    #     fstr_recall = '|IR_R' \
-    #                   '/1R:{r1}|1RA:{r1a}|1RO:{r1o}' \
-    #                   '/5R:{r5}|5RA:{r5a}|5RO:{r5o}' \
-    #                   '/10R:{r10}|10RA:{r10a}|10RO:{r10o}' \
-    #                   '/50R:{r50}|50RA:{r50a}|50RO:{r50o}' \
-    #                   '/100R:{r100}|100RA:{r100a}|100RO:{r100o}'.format(
-    #                   r1=report['ir_recall'][1][0][0],
-    #                   r1a=report['ir_recall'][1][0][1],
-    #                   r1o=report['ir_recall'][1][0][2],
-    #                   r5=report['ir_recall'][5][0][0],
-    #                   r5a=report['ir_recall'][5][0][1],
-    #                   r5o=report['ir_recall'][5][0][2],
-    #                   r10=report['ir_recall'][10][0][0],
-    #                   r10a=report['ir_recall'][10][0][1],
-    #                   r10o=report['ir_recall'][10][0][2],
-    #                   r50=report['ir_recall'][50][0][0],
-    #                   r50a=report['ir_recall'][50][0][1],
-    #                   r50o=report['ir_recall'][50][0][2],
-    #                   r100=report['ir_recall'][100][0][0],
-    #                   r100a=report['ir_recall'][100][0][1],
-    #                   r100o=report['ir_recall'][100][0][2],
-    #     )
-    return fstr.format(**report) #+ fstr_recall
+    if 'ir_recall' in report:
+        fstr_recall = '|IR_R' \
+                      '/1R:{r1}|1RA:{r1a}|1RO:{r1o}' \
+                      '/5R:{r5}|5RA:{r5a}|5RO:{r5o}' \
+                      '/10R:{r10}|10RA:{r10a}|10RO:{r10o}' \
+                      '/50R:{r50}|50RA:{r50a}|50RO:{r50o}' \
+                      '/100R:{r100}|100RA:{r100a}|100RO:{r100o}'.format(
+                      r1=report['ir_recall'][1][0][0],
+                      r1a=report['ir_recall'][1][0][1],
+                      r1o=report['ir_recall'][1][0][2],
+                      r5=report['ir_recall'][5][0][0],
+                      r5a=report['ir_recall'][5][0][1],
+                      r5o=report['ir_recall'][5][0][2],
+                      r10=report['ir_recall'][10][0][0],
+                      r10a=report['ir_recall'][10][0][1],
+                      r10o=report['ir_recall'][10][0][2],
+                      r50=report['ir_recall'][50][0][0],
+                      r50a=report['ir_recall'][50][0][1],
+                      r50o=report['ir_recall'][50][0][2],
+                      r100=report['ir_recall'][100][0][0],
+                      r100a=report['ir_recall'][100][0][1],
+                      r100o=report['ir_recall'][100][0][2],
+        )
+    return fstr.format(**report) + fstr_recall
 
 
 ################################################################################

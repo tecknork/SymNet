@@ -99,6 +99,7 @@ def make_parser():
     
     parser.add_argument("--lambda_cls_attr", type=float, default=0)
     parser.add_argument("--lambda_cls_obj", type=float, default=0)
+    parser.add_argument("--lambda_retrieval", type=float, default=0)
 
     parser.add_argument("--lambda_trip", type=float, default=0)
     parser.add_argument("--triplet_margin", type=float, default=0.5,
@@ -225,7 +226,7 @@ class SolverWrapper(BaseSolver):
             if cfg.RANDOM_SEED is not None:
                 tf.set_random_seed(cfg.RANDOM_SEED)
 
-            loss_op, score_op, train_summary_op = self.network.build_network()
+            loss_op, score_op, train_summary_op,image_embeddings = self.network.build_network()
             
 
             self.epoch_num = 0
@@ -252,7 +253,7 @@ class SolverWrapper(BaseSolver):
             self.saver = tf.train.Saver(max_to_keep=None)
 
 
-        return lr, score_op, train_op, train_summary_op
+        return lr, score_op, train_op, train_summary_op,image_embeddings,loss_op
 
         
 
@@ -260,7 +261,7 @@ class SolverWrapper(BaseSolver):
         logger = self.logger('train_model')
         logger.info('Begin training')
 
-        lr, score_op, train_op, train_summary_op = self.construct_graph(sess)
+        lr, score_op, train_op, train_summary_op,img_embeddings ,loss_op= self.construct_graph(sess)
         #for x in tf.global_variables():
         #    print(x.name)
 
@@ -286,10 +287,10 @@ class SolverWrapper(BaseSolver):
                 else:
                     eval_lr = lr.eval()
                 
-                summary = self.network.train_step(
+                summary,loss = self.network.train_step(
                     sess, batch, eval_lr,
-                    train_op, train_summary_op)
-
+                    train_op, train_summary_op,loss_op)
+                print("loss is ", loss)
             writer.add_summary(summary, float(epoch))
 
 
@@ -316,6 +317,8 @@ class SolverWrapper(BaseSolver):
                 accuracies_obj = defaultdict(list)
                 image_reterival_top_nn = []
                 image_reterival_image_labels_nn = []
+                test_query_embeddings_list = []
+                image_embeddings = self.network.get_img_embeddings(sess, img_embeddings)
                 for image_ind, batch in tqdm.tqdm(enumerate(self.test_dataloader), total=len(self.test_dataloader), postfix='test'):
 
                     predictions = self.network.test_step(sess, batch, score_op)
@@ -339,8 +342,7 @@ class SolverWrapper(BaseSolver):
                             accuracies_obj[key].append(o_match)
                         else:
                             top_nn = predictions[key]
-                            image_reterival_top_nn.extend([image_id for row in top_nn for image_id in row])
-                            image_reterival_image_labels_nn.extend([get_ground_label_for_image_ids(image_id) for row in top_nn for image_id in row])
+                            test_query_embeddings_list.extend(top_nn)
                         #
                         # label_top_nn = print_for_label(top_nn[0])
                         # #  print(top_nn[0])
@@ -363,24 +365,42 @@ class SolverWrapper(BaseSolver):
                     real_obj_acc = torch.mean(torch.cat(accuracies_obj[name])).item()
 
                     ############ image_reterival_score ########################
+                    test_query_embeddings_list = np.array(test_query_embeddings_list)
+
+
+
+                    for i in range(image_embeddings.shape[0]):
+                        image_embeddings[i, :] /= np.linalg.norm(image_embeddings[i, :])
+                    for i in range(test_query_embeddings_list.shape[0]):
+                        test_query_embeddings_list[i, :] /= np.linalg.norm(test_query_embeddings_list[i, :])
+
+                    sims = test_query_embeddings_list.dot(image_embeddings.T)
+                    nn_result_labels = [np.argsort(-sims[i, :])[:110] for i in range(sims.shape[0])]
+                    nn_result_labels = [get_ground_label_for_image_ids(data) for data in nn_result_labels]
                     target_labels_for_each_query = [(data[6],data[7]) for data in self.test_dataloader.dataset.data]
                     recall_k =  defaultdict(list)
                     for k in [1, 5, 10, 50, 100]:
                         r = 0.0
+                        for target_query, nns in zip(target_labels_for_each_query, nn_result_labels):
+                            if target_query in nns[:k]:
+                                r += 1
+                        r /= len(nn_result_labels)
+                        # out += [('recall_top' + str(k) + '_correct_composition', r)]
+
                         r_a = 0.0
+                        for target_query, nns in zip(target_labels_for_each_query, nn_result_labels):
+                            if target_query[0] in [x[0] for x in nns[:k]]:
+                                r_a += 1
+                        r_a /= len(nn_result_labels)
+                        # out += [('recall_top' + str(k) + '_correct_adj', r)]
+
                         r_o = 0.0
-                        for query_result_image_ids,query_result_image_labels,query_target_labels in zip(image_reterival_top_nn,image_reterival_image_labels_nn,target_labels_for_each_query):
-                            if query_target_labels in query_result_image_labels[:k]:
-                                r +=1
-                            if query_target_labels[0] in [x[0] for x in query_result_image_labels[:k]]:
-                                r_a +=1
-                            if query_target_labels[1] in [x[1] for x in query_result_image_labels[:k]]:
-                                r_o +=1
-                        r /= len(target_labels_for_each_query)
-                        r_a /= len(target_labels_for_each_query)
-                        r_o /= len(target_labels_for_each_query)
-                        recall_k[k].append([r,r_a,r_o])
-                        print("k:%d recall_compositon:%s recall_attribue:%s recall_object:%s" %(k,r,r_a,r_o))
+                        for target_query, nns in zip(target_labels_for_each_query, nn_result_labels):
+                            if target_query[1] in [x[1] for x in nns[:k]]:
+                                r_o += 1
+                        r_o /= len(nn_result_labels)
+                        # out += [('recall_top' + str(k) + '_correct_noun', r)]
+                        recall_k[k].append([r, r_a, r_o])
                     ###################### image reterival #################################################
 
                     report_dict = {

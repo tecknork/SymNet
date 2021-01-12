@@ -149,6 +149,13 @@ class Network(BaseNetwork):
         pos_rA = self.transformer(pos_img, pos_attr_emb, True, name='DeCoN')
         pos_rB = self.transformer(pos_img, neg_attr_emb, True, name='DeCoN')
 
+        ############## img Retervial ######################################
+        # #remove groundattr
+        pos_rGA = self.transformer(pos_img, pos_attr_emb, False, name='DeCoN')
+        # add query attribute
+        pos_aQA = self.transformer(pos_rGA, neg_attr_emb, False, name='CoN')
+        ############## img Retervial ######################################
+
         attr_emb = self.attr_embedder.get_embedding(np.arange(self.num_attr)) 
         # (#attr, dim_emb), wordvec of all attributes
         tile_attr_emb = utils.tile_tensor(attr_emb, 0, batchsize) 
@@ -400,10 +407,10 @@ class Network(BaseNetwork):
         #print(indices.get_shape())
         return indices
 
-    def train_step(self, sess, blobs, lr, train_op, train_summary_op):
+    def train_step(self, sess, blobs, lr, train_op, train_summary_op,loss_op):
         
-        summary, _ = sess.run(
-            [train_summary_op, train_op],
+        summary, _,loss = sess.run(
+            [train_summary_op, train_op,loss_op],
             feed_dict={
                 self.pos_attr_id     : blobs[1],
                 self.pos_obj_id      : blobs[2],
@@ -413,7 +420,7 @@ class Network(BaseNetwork):
                 self.lr: lr,
             })
 
-        return summary
+        return summary,loss
 
 
     def get_img_embeddings(self,sess,img_embeddings):
