@@ -79,11 +79,11 @@ class SolverWrapper(BaseSolver):
             if cfg.RANDOM_SEED is not None:
                 tf.set_random_seed(cfg.RANDOM_SEED)
 
-            loss_op, score_op, train_summary_op = self.network.build_network()
+            loss_op, score_op, train_summary_op,image_embeddings = self.network.build_network()
             
             global_step = tf.Variable(self.args.epoch, trainable=False)
 
-        return score_op, train_summary_op
+        return score_op, train_summary_op,image_embeddings
 
         
 
@@ -91,7 +91,7 @@ class SolverWrapper(BaseSolver):
         logger = self.logger('train_model')
         logger.info('Begin training')
 
-        score_op, train_summary_op = self.construct_graph(sess)
+        score_op, train_summary_op,img_embeddings = self.construct_graph(sess)
         #for x in tf.global_variables():
         #    print(x.name)
 
@@ -107,7 +107,12 @@ class SolverWrapper(BaseSolver):
         accuracies_attr = defaultdict(list)
         accuracies_obj = defaultdict(list)
         image_reterival_top_nn = []
+        test_query_embeddings_list= []
         image_reterival_image_labels_nn = []
+        image_embeddings = self.network.get_img_embeddings(sess,img_embeddings)
+        #print(image_embeddings.shape)
+        #print(image_embeddings)
+
         for image_ind, batch in tqdm.tqdm(enumerate(self.test_dataloader), total=len(self.test_dataloader), postfix='test'):
 
             predictions = self.network.test_step(sess, batch, score_op)  # ordereddict of [score_pair, score_a, score_o]
@@ -136,31 +141,74 @@ class SolverWrapper(BaseSolver):
 
                 else:
                     top_nn = predictions[key]
-                    image_reterival_top_nn.extend([image_id for row in top_nn for image_id in row])
-                    image_reterival_image_labels_nn.extend(
-                        [get_ground_label_for_image_ids(image_id) for row in top_nn for image_id in row])
+                    test_query_embeddings_list.extend(top_nn)
+                   # print(top_nn)
+                    #print(len(top_nn))
+                    #print(top_nn.shape)
+                    # image_reterival_top_nn.extend([image_id for row in top_nn for image_id in row])
+                    # image_reterival_image_labels_nn.extend(
+                    #     [get_ground_label_for_image_ids(image_id) for row in top_nn for image_id in row])
 
+        #print(test_query_embeddings_list)
+        test_query_embeddings_list= np.array(test_query_embeddings_list)
+
+        #print(test_query_embeddings_list.shape)
+
+        for i in range(image_embeddings.shape[0]):
+            image_embeddings[i, :] /= np.linalg.norm(image_embeddings[i, :])
+        for i in range(test_query_embeddings_list.shape[0]):
+            test_query_embeddings_list[i, :] /= np.linalg.norm(test_query_embeddings_list[i, :])
+
+        sims = test_query_embeddings_list.dot(image_embeddings.T)
+        nn_result_labels = [np.argsort(-sims[i, :])[:110] for i in range(sims.shape[0])]
+        nn_result_labels = [get_ground_label_for_image_ids(data) for data in nn_result_labels]
         ############ image_reterival_score ########################
         target_labels_for_each_query = [(data[6], data[7]) for data in self.test_dataloader.dataset.data]
-        recall_k = defaultdict(list)
-        for k in [1, 5, 10, 50, 100]:
-                    r = 0.0
-                    r_a = 0.0
-                    r_o = 0.0
-                    for query_result_image_ids, query_result_image_labels, query_target_labels in zip(
-                            image_reterival_top_nn, image_reterival_image_labels_nn, target_labels_for_each_query):
-                        if query_target_labels in query_result_image_labels[:k]:
-                            r += 1
-                        if query_target_labels[0] in [x[0] for x in query_result_image_labels[:k]]:
-                            r_a += 1
-                        if query_target_labels[1] in [x[1] for x in query_result_image_labels[:k]]:
-                            r_o += 1
-                    r /= len(target_labels_for_each_query)
-                    r_a /= len(target_labels_for_each_query)
-                    r_o /= len(target_labels_for_each_query)
-                    recall_k[k].append([r, r_a, r_o])
-                    print("k:%d recall_compositon:%s recall_attribue:%s recall_object:%s" % (k, r, r_a, r_o))
-        ###################### image reterival #################################################
+        # recall_k = defaultdict(list)
+        # for k in [1, 5, 10, 50, 100]:
+        #             r = 0.0
+        #             r_a = 0.0
+        #             r_o = 0.0
+        #             for query_result_image_ids, query_result_image_labels, query_target_labels in zip(
+        #                     image_reterival_top_nn, image_reterival_image_labels_nn, target_labels_for_each_query):
+        #                 if query_target_labels in query_result_image_labels[:k]:
+        #                     r += 1
+        #                 if query_target_labels[0] in [x[0] for x in query_result_image_labels[:k]]:
+        #                     r_a += 1
+        #                 if query_target_labels[1] in [x[1] for x in query_result_image_labels[:k]]:
+        #                     r_o += 1
+        #             r /= len(target_labels_for_each_query)
+        #             r_a /= len(target_labels_for_each_query)
+        #             r_o /= len(target_labels_for_each_query)
+        #             recall_k[k].append([r, r_a, r_o])
+        #             print("k:%d recall_compositon:%s recall_attribue:%s recall_object:%s" % (k, r, r_a, r_o))
+        # ###################### image reterival #################################################
+        out = []
+        for k in [1, 5, 10,50,100]:
+            r = 0.0
+            for target_query, nns in zip(target_labels_for_each_query, nn_result_labels):
+                if target_query in nns[:k]:
+                    r += 1
+            r /= len(nn_result_labels)
+            out += [('recall_top' + str(k) + '_correct_composition', r)]
+
+            r = 0.0
+            for target_query, nns in zip(target_labels_for_each_query, nn_result_labels):
+                if target_query[0] in [x[0] for x in nns[:k]]:
+                    r += 1
+            r /= len(nn_result_labels)
+            out += [('recall_top' + str(k) + '_correct_adj', r)]
+
+
+            r = 0.0
+            for target_query, nns in zip(target_labels_for_each_query, nn_result_labels):
+                if target_query[1] in [x[1] for x in nns[:k]]:
+                    r += 1
+            r /= len(nn_result_labels)
+            out += [('recall_top' + str(k) + '_correct_noun', r)]
+
+        print(out)
+
 
         for name in accuracies_pair.keys():
             accuracies = accuracies_pair[name]
@@ -179,7 +227,7 @@ class SolverWrapper(BaseSolver):
                 'top3_acc':     closed_3_acc,
                 'name':         self.args.name,
                 'epoch':        self.args.epoch,
-                'ir_recall':    recall_k,
+                #'ir_recall':    recall_k,
             }
 
             print(name + ": " + utils.formated_czsl_result(report_dict))
