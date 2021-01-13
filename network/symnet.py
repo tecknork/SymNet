@@ -150,10 +150,14 @@ class Network(BaseNetwork):
         pos_rB = self.transformer(pos_img, neg_attr_emb, True, name='DeCoN')
 
         ############## img Retervial ######################################
+
         # #remove groundattr
-        pos_rGA = self.transformer(pos_img, pos_attr_emb, False, name='DeCoN')
+        pos_rQA = self.transformer(pos_img, pos_attr_emb, True, name='DeCoN')
         # add query attribute
-        pos_aQA = self.transformer(pos_rGA, neg_attr_emb, False, name='CoN')
+        pos_aQB = self.transformer(pos_rQA, neg_attr_emb, True, name='CoN')
+        pos_aQA = self.transformer(pos_rQA, pos_attr_emb, True, name='CoN')
+
+
         ############## img Retervial ######################################
 
         attr_emb = self.attr_embedder.get_embedding(np.arange(self.num_attr)) 
@@ -316,6 +320,19 @@ class Network(BaseNetwork):
             with tf.device("/cpu:0"):
                 tf.summary.scalar('loss/loss_triplet', loss_triplet)
         
+        ############################
+
+        ############################ image reterival loss ####################
+
+        if self.args.lambda_retrieval > 0:
+            l2_reconstruction_aA = self.distance_metric(pos_img,pos_aQA)
+            l2_reconstruction_aB = self.distance_metric(neg_img,pos_aQB)
+            loss_retrival = self.args.lambda_retrieval * ( l2_reconstruction_aA + l2_reconstruction_aB)
+            total_losses.append(loss_triplet)
+            with tf.device("/cpu:0"):
+                tf.summary.scalar('loss/loss_retrival', loss_retrival)
+
+        ###########################
 
         ################################ testing ##############################
 
