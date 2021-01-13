@@ -213,7 +213,7 @@ class Network(BaseNetwork):
 
             with tf.device("/cpu:0"):
                 tf.summary.scalar('loss/loss_cls_attr', loss_cls_attr)
-                    
+
 
 
         if self.args.lambda_cls_obj > 0:
@@ -325,10 +325,13 @@ class Network(BaseNetwork):
         ############################ image reterival loss ####################
 
         if self.args.lambda_retrieval > 0:
-            l2_reconstruction_aA = self.distance_metric(pos_img,pos_aQA)
-            l2_reconstruction_aB = self.distance_metric(neg_img,pos_aQB)
-            loss_retrival = self.args.lambda_retrieval * ( l2_reconstruction_aA + l2_reconstruction_aB)
-            total_losses.append(loss_triplet)
+            l2_reconstruction_aA = self.MSELoss(pos_img,pos_aQA)
+            #print(l2_reconstruction_aA)
+            l2_reconstruction_aB = self.MSELoss(neg_img,pos_aQB)
+            #print(l2_reconstruction_aB)
+            loss_retrival = self.args.lambda_retrieval *  (l2_reconstruction_aA + l2_reconstruction_aB)
+            #print(loss_retrival)
+            total_losses.append(loss_retrival)
             with tf.device("/cpu:0"):
                 tf.summary.scalar('loss/loss_retrival', loss_retrival)
 
