@@ -182,18 +182,18 @@ class Network(BaseNetwork):
             loss_cls_pos_rA_a = self.cross_entropy(
                 prob_pos_rA_A, self.pos_attr_id, self.num_attr, 
                 target=0, weight=self.attr_weight)
-
-            # after re-adding pos_attr
-            _, prob_pos_rA_AA = self.attr_classification(pos_aQA, is_training=True)
-            loss_cls_pos_rAA_a = self.cross_entropy(
-                prob_pos_rA_AA, self.pos_attr_id, self.num_attr,
-                target=0, weight=self.attr_weight)
-
-            # after adding neg_attr
-            _, prob_pos_rA_AB = self.attr_classification(pos_aQB, is_training=True)
-            loss_cls_pos_rAB_a = self.cross_entropy(
-                prob_pos_rA_AB, self.neg_attr_id, self.num_attr,
-                target=0, weight=self.attr_weight)
+            #
+            # # after re-adding pos_attr
+            # _, prob_pos_rA_AA = self.attr_classification(pos_aQA, is_training=True)
+            # loss_cls_pos_rAA_a = self.cross_entropy(
+            #     prob_pos_rA_AA, self.pos_attr_id, self.num_attr,
+            #     target=0, weight=self.attr_weight)
+            #
+            # # after adding neg_attr
+            # _, prob_pos_rA_AB = self.attr_classification(pos_aQB, is_training=True)
+            # loss_cls_pos_rAB_a = self.cross_entropy(
+            #     prob_pos_rA_AB, self.neg_attr_id, self.num_attr,
+            #     target=0, weight=self.attr_weight)
 
             # rmd
             repeat_img_feat = utils.repeat_tensor(pos_img, 0, self.num_attr)  
@@ -216,7 +216,7 @@ class Network(BaseNetwork):
             
 
             loss_cls_attr = self.args.lambda_cls_attr * sum([
-                loss_cls_pos_a, loss_cls_pos_rA_a,loss_cls_pos_rAA_a,loss_cls_pos_rAB_a,
+                loss_cls_pos_a, loss_cls_pos_rA_a,#loss_cls_pos_rAA_a,loss_cls_pos_rAB_a,
                 loss_cls_rmd_plus, loss_cls_rmd_minus
             ])
 
@@ -340,7 +340,7 @@ class Network(BaseNetwork):
             #print(l2_reconstruction_aA)
             l2_reconstruction_aB = self.MSELoss(neg_img,pos_aQB)
             #print(l2_reconstruction_aB)
-            loss_retrival = self.args.lambda_retrieval *  (l2_reconstruction_aA + l2_reconstruction_aB)
+            loss_retrival = self.args.lambda_retrieval *  l2_reconstruction_aB#(l2_reconstruction_aA + l2_reconstruction_aB)
             #print(loss_retrival)
             total_losses.append(loss_retrival)
             with tf.device("/cpu:0"):

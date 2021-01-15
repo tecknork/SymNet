@@ -187,7 +187,7 @@ class SolverWrapper(BaseSolver):
             self.criterion = 'real_obj_acc'
             self.key_score_name = "score_fc"
         else:
-            self.criterion = 'top1_acc'
+            self.criterion = 'ir_recall_T1'
             self.key_score_name = "score_rmd"
         
 
@@ -290,9 +290,9 @@ class SolverWrapper(BaseSolver):
                 summary,loss = self.network.train_step(
                     sess, batch, eval_lr,
                     train_op, train_summary_op,loss_op)
-                print("loss is ", loss)
-            writer.add_summary(summary, float(epoch))
 
+            writer.add_summary(summary, float(epoch))
+            print("loss is ", loss)
 
             if self.args.test_freq>0 and epoch % self.args.test_freq == 0:
                 ########################## test czsl ##########################
@@ -411,6 +411,7 @@ class SolverWrapper(BaseSolver):
                         'top3_acc':     closed_3_acc,
                         'name':         self.args.name,
                         'epoch':        epoch,
+                        'ir_recall_T1': recall_k[1][0][0],
                         'ir_recall': recall_k,
                     }
 
