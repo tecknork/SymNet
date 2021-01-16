@@ -183,17 +183,17 @@ class Network(BaseNetwork):
                 prob_pos_rA_A, self.pos_attr_id, self.num_attr, 
                 target=0, weight=self.attr_weight)
             #
-            # # after re-adding pos_attr
-            # _, prob_pos_rA_AA = self.attr_classification(pos_aQA, is_training=True)
-            # loss_cls_pos_rAA_a = self.cross_entropy(
-            #     prob_pos_rA_AA, self.pos_attr_id, self.num_attr,
-            #     target=0, weight=self.attr_weight)
-            #
-            # # after adding neg_attr
-            # _, prob_pos_rA_AB = self.attr_classification(pos_aQB, is_training=True)
-            # loss_cls_pos_rAB_a = self.cross_entropy(
-            #     prob_pos_rA_AB, self.neg_attr_id, self.num_attr,
-            #     target=0, weight=self.attr_weight)
+            # after re-adding pos_attr
+            _, prob_pos_rA_AA = self.attr_classification(pos_aQA, is_training=True)
+            loss_cls_pos_rAA_a = self.cross_entropy(
+                prob_pos_rA_AA, self.pos_attr_id, self.num_attr,
+                target=0, weight=self.attr_weight)
+
+            # after adding neg_attr
+            _, prob_pos_rA_AB = self.attr_classification(pos_aQB, is_training=True)
+            loss_cls_pos_rAB_a = self.cross_entropy(
+                prob_pos_rA_AB, self.neg_attr_id, self.num_attr,
+                target=0, weight=self.attr_weight)
 
             # rmd
             repeat_img_feat = utils.repeat_tensor(pos_img, 0, self.num_attr)  
