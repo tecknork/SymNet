@@ -92,7 +92,7 @@ def make_parser():
         help="#fc layers after word vector")
     parser.add_argument("--fc_compress", type=int, default=[768], nargs='*',
         help="#fc layers after hidden layer")
-    parser.add_argument("--fc_cls", type=int, default=[512,1024,512], nargs='*',
+    parser.add_argument("--fc_cls", type=int, default=[512], nargs='*',
         help="#fc layers in classifiers")
     
     
