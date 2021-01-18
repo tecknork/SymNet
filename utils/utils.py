@@ -72,8 +72,10 @@ def formated_czsl_result(report):
                       r100a=report['ir_recall'][100][0][1],
                       r100o=report['ir_recall'][100][0][2],
         )
-    return fstr.format(**report) + fstr_recall
+        return fstr.format(**report) + fstr_recall
 
+    else:
+        return fstr.format(**report)
 
 ################################################################################
 #                                glove embedder                                #
