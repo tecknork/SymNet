@@ -216,7 +216,7 @@ class Network(BaseNetwork):
             
 
             loss_cls_attr = self.args.lambda_cls_attr * sum([
-                loss_cls_pos_a, loss_cls_pos_rA_a,#loss_cls_pos_rAA_a,loss_cls_pos_rAB_a,
+                loss_cls_pos_a, loss_cls_pos_rA_a,loss_cls_pos_rAA_a,loss_cls_pos_rAB_a,
                 loss_cls_rmd_plus, loss_cls_rmd_minus
             ])
 
@@ -336,11 +336,11 @@ class Network(BaseNetwork):
         ############################ image reterival loss ####################
 
         if self.args.lambda_retrieval > 0:
-            l2_reconstruction_aA = self.MSELoss(pos_img,pos_aQA)
+            l2_reconstruction_aA = self.MSELoss(pos_img,pos_aQA,metric="cos")
             #print(l2_reconstruction_aA)
-            l2_reconstruction_aB = self.MSELoss(neg_img,pos_aQB)
+            l2_reconstruction_aB = self.MSELoss(neg_img,pos_aQB,metric="cos")
             #print(l2_reconstruction_aB)
-            loss_retrival = self.args.lambda_retrieval *  l2_reconstruction_aB#(l2_reconstruction_aA + l2_reconstruction_aB)
+            loss_retrival = self.args.lambda_retrieval *  (l2_reconstruction_aA + l2_reconstruction_aB)
             #print(loss_retrival)
             total_losses.append(loss_retrival)
             with tf.device("/cpu:0"):

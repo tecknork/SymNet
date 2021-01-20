@@ -151,9 +151,28 @@ class BaseNetwork(object):
         else:
             raise NotImplementedError("Unsupported distance metric: %s" + \
                 self.args.distance_metric)
+
+    def distance_metric(self, a, b,metric):
+        if (metric == 'L2'):
+            return tf.norm(a - b, axis=-1)
+        elif (metric == 'L1'):
+            return tf.norm(a - b, axis=-1, ord=1)
+        elif (metric == 'cos'):
+            return tf.reduce_sum(
+                tf.multiply(
+                    tf.nn.l2_normalize(a, axis=-1),
+                    tf.nn.l2_normalize(b, axis=-1)
+                ), axis=-1)
+        else:
+            raise NotImplementedError("Unsupported distance metric: %s" + \
+                                      self.args.distance_metric)
         
     def MSELoss(self, a, b):
         return tf.reduce_mean(self.distance_metric(a, b))
+
+    def MSELoss(self, a, b,metric="cos"):
+        return tf.reduce_mean(self.distance_metric(a, b,metric))
+
 
     #def L2distance(self, a, b):
     #    return self.distance_metric(a, b)
